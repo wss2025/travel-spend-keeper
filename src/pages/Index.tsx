@@ -4,11 +4,19 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import TripSetup from "@/components/TripSetup";
 import ExpenseTracker from "@/components/ExpenseTracker";
+import TravelHistory from "@/components/TravelHistory";
 import { Trip } from "@/types/types";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import { History, PlusCircle } from "lucide-react";
 
 const Index = () => {
   const [currentTrip, setCurrentTrip] = useState<Trip | null>(null);
@@ -78,11 +86,37 @@ const Index = () => {
           </Button>
         </div>
 
-        {!currentTrip ? (
-          <TripSetup onTripCreate={setCurrentTrip} />
-        ) : (
-          <ExpenseTracker trip={currentTrip} onReset={() => setCurrentTrip(null)} />
-        )}
+        <Tabs defaultValue={currentTrip ? "current" : "new"} className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="new" className="flex items-center gap-2">
+              <PlusCircle className="w-4 h-4" />
+              New Trip
+            </TabsTrigger>
+            <TabsTrigger value="history" className="flex items-center gap-2">
+              <History className="w-4 h-4" />
+              Travel History
+            </TabsTrigger>
+            {currentTrip && (
+              <TabsTrigger value="current" className="flex items-center gap-2">
+                Current Trip
+              </TabsTrigger>
+            )}
+          </TabsList>
+
+          <TabsContent value="new">
+            {!currentTrip && <TripSetup onTripCreate={setCurrentTrip} />}
+          </TabsContent>
+
+          <TabsContent value="history">
+            <TravelHistory />
+          </TabsContent>
+
+          {currentTrip && (
+            <TabsContent value="current">
+              <ExpenseTracker trip={currentTrip} onReset={() => setCurrentTrip(null)} />
+            </TabsContent>
+          )}
+        </Tabs>
       </motion.div>
     </div>
   );
