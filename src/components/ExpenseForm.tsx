@@ -13,7 +13,7 @@ import { Expense } from "@/types/types";
 
 interface ExpenseFormProps {
   categories: string[];
-  onSubmit: (expense: Expense) => void;
+  onSubmit: (expense: Omit<Expense, 'id' | 'trip_id'>) => void;
 }
 
 const ExpenseForm = ({ categories, onSubmit }: ExpenseFormProps) => {
@@ -25,8 +25,7 @@ const ExpenseForm = ({ categories, onSubmit }: ExpenseFormProps) => {
     e.preventDefault();
     if (!amount || !category) return;
 
-    const expense: Expense = {
-      id: Date.now().toString(),
+    const expense = {
       amount: parseFloat(amount),
       category,
       description,
