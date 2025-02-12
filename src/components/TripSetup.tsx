@@ -9,6 +9,8 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { Trip } from "@/types/types";
 import { format } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface TripSetupProps {
   onTripCreate: (trip: Trip) => void;
@@ -16,13 +18,15 @@ interface TripSetupProps {
 
 const TripSetup = ({ onTripCreate }: TripSetupProps) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [destination, setDestination] = useState("");
   const [budget, setBudget] = useState("");
-  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [startDate, setStartDate] = useState<Date | undefined>(new Date());
+  const [endDate, setEndDate] = useState<Date | undefined>(new Date());
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!destination || !budget || !date) {
+    if (!destination || !budget || !startDate || !endDate || !user) {
       toast({
         title: "Missing Information",
         description: "Please fill in all fields",
@@ -31,20 +35,50 @@ const TripSetup = ({ onTripCreate }: TripSetupProps) => {
       return;
     }
 
-    const trip: Trip = {
-      id: Date.now().toString(),
-      destination,
-      budget: parseFloat(budget),
-      startDate: date,
-      expenses: [],
-      categories: ["Food", "Transport", "Accommodation", "Activities", "Other"],
-    };
+    if (endDate < startDate) {
+      toast({
+        title: "Invalid Dates",
+        description: "End date must be after start date",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    onTripCreate(trip);
-    toast({
-      title: "Trip Created",
-      description: "You can now start tracking your expenses",
-    });
+    try {
+      const { data, error } = await supabase
+        .from('trips')
+        .insert({
+          user_id: user.id,
+          destination,
+          budget: parseFloat(budget),
+          start_date: startDate.toISOString(),
+          end_date: endDate.toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const trip: Trip = {
+        ...data,
+        start_date: new Date(data.start_date),
+        end_date: new Date(data.end_date),
+        expenses: [],
+        categories: ["Food", "Transport", "Accommodation", "Activities", "Other"],
+      };
+
+      onTripCreate(trip);
+      toast({
+        title: "Trip Created",
+        description: "You can now start tracking your expenses",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -78,14 +112,26 @@ const TripSetup = ({ onTripCreate }: TripSetupProps) => {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label>Start Date</Label>
-            <Calendar
-              mode="single"
-              selected={date}
-              onSelect={setDate}
-              className="rounded-md border"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label>Start Date</Label>
+              <Calendar
+                mode="single"
+                selected={startDate}
+                onSelect={setStartDate}
+                className="rounded-md border"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>End Date</Label>
+              <Calendar
+                mode="single"
+                selected={endDate}
+                onSelect={setEndDate}
+                className="rounded-md border"
+              />
+            </div>
           </div>
 
           <Button type="submit" className="w-full bg-purple-500 hover:bg-purple-600">

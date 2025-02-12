@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,8 @@ import ExpenseSummary from "./ExpenseSummary";
 import ExpenseList from "./ExpenseList";
 import { Trip, Expense } from "@/types/types";
 import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
 
 interface ExpenseTrackerProps {
   trip: Trip;
@@ -15,15 +17,65 @@ interface ExpenseTrackerProps {
 }
 
 const ExpenseTracker = ({ trip, onReset }: ExpenseTrackerProps) => {
-  const [expenses, setExpenses] = useState<Expense[]>(trip.expenses);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const { toast } = useToast();
 
-  const addExpense = (expense: Expense) => {
-    setExpenses([...expenses, expense]);
-    toast({
-      title: "Expense Added",
-      description: `${expense.amount} added for ${expense.category}`,
-    });
+  useEffect(() => {
+    loadExpenses();
+  }, [trip.id]);
+
+  const loadExpenses = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('*')
+        .eq('trip_id', trip.id)
+        .order('date', { ascending: false });
+
+      if (error) throw error;
+
+      setExpenses(data.map(exp => ({
+        ...exp,
+        date: new Date(exp.date)
+      })));
+    } catch (error: any) {
+      console.error('Error loading expenses:', error.message);
+    }
+  };
+
+  const addExpense = async (expense: Omit<Expense, 'id' | 'trip_id'>) => {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .insert({
+          trip_id: trip.id,
+          amount: expense.amount,
+          category: expense.category,
+          description: expense.description,
+          date: expense.date.toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const newExpense: Expense = {
+        ...data,
+        date: new Date(data.date)
+      };
+
+      setExpenses([newExpense, ...expenses]);
+      toast({
+        title: "Expense Added",
+        description: `${expense.amount} added for ${expense.category}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   const totalSpent = expenses.reduce((sum, expense) => sum + expense.amount, 0);
@@ -40,7 +92,9 @@ const ExpenseTracker = ({ trip, onReset }: ExpenseTrackerProps) => {
         <div className="flex justify-between items-center mb-6">
           <div>
             <h2 className="text-2xl font-semibold text-gray-800">{trip.destination}</h2>
-            <p className="text-gray-600">Track your expenses</p>
+            <p className="text-gray-600">
+              {format(trip.start_date, 'PPP')} - {format(trip.end_date, 'PPP')}
+            </p>
           </div>
           <Button variant="outline" onClick={onReset}>
             End Trip
