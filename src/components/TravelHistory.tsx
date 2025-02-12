@@ -36,7 +36,7 @@ const TravelHistory = () => {
         .from('trips')
         .select(`
           *,
-          expenses:expenses(amount)
+          expenses(*)
         `)
         .eq('user_id', user.id)
         .order('start_date', { ascending: false });
@@ -47,7 +47,10 @@ const TravelHistory = () => {
         ...trip,
         start_date: new Date(trip.start_date),
         end_date: new Date(trip.end_date),
-        expenses: trip.expenses || [],
+        expenses: trip.expenses ? trip.expenses.map((exp: any) => ({
+          ...exp,
+          date: new Date(exp.date),
+        })) : [],
         categories: ["Food", "Transport", "Accommodation", "Activities", "Other"],
         total_expenses: trip.expenses
           ? trip.expenses.reduce((sum: number, exp: any) => sum + exp.amount, 0)
@@ -121,7 +124,7 @@ const TravelHistory = () => {
             <TabsContent value="expenses" className="mt-4">
               <div className="space-y-4">
                 {trip.expenses.length > 0 ? (
-                  trip.expenses.map((expense: any) => (
+                  trip.expenses.map((expense) => (
                     <div
                       key={expense.id}
                       className="flex justify-between items-center p-4 bg-gray-50 rounded-lg"
