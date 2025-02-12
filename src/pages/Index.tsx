@@ -20,6 +20,7 @@ import { History, PlusCircle } from "lucide-react";
 
 const Index = () => {
   const [currentTrip, setCurrentTrip] = useState<Trip | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("new");
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -44,6 +45,11 @@ const Index = () => {
     } catch (error: any) {
       console.error('Error fetching profile:', error.message);
     }
+  };
+
+  const handleTripCreate = (trip: Trip) => {
+    setCurrentTrip(trip);
+    setActiveTab("current");
   };
 
   const handleLogout = async () => {
@@ -86,7 +92,7 @@ const Index = () => {
           </Button>
         </div>
 
-        <Tabs defaultValue={currentTrip ? "current" : "new"} className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList>
             <TabsTrigger value="new" className="flex items-center gap-2">
               <PlusCircle className="w-4 h-4" />
@@ -104,7 +110,7 @@ const Index = () => {
           </TabsList>
 
           <TabsContent value="new">
-            {!currentTrip && <TripSetup onTripCreate={setCurrentTrip} />}
+            {!currentTrip && <TripSetup onTripCreate={handleTripCreate} />}
           </TabsContent>
 
           <TabsContent value="history">
@@ -113,7 +119,13 @@ const Index = () => {
 
           {currentTrip && (
             <TabsContent value="current">
-              <ExpenseTracker trip={currentTrip} onReset={() => setCurrentTrip(null)} />
+              <ExpenseTracker 
+                trip={currentTrip} 
+                onReset={() => {
+                  setCurrentTrip(null);
+                  setActiveTab("new");
+                }} 
+              />
             </TabsContent>
           )}
         </Tabs>
